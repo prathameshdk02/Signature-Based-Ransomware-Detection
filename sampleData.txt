@@ -1,1 +1,0 @@
-{"data": [{"name": "virus2.txt", "extension": ".txt", "size": 26, "creation-time": "2023-06-02", "hash": "be08a414f07794da187ab81aff2e5362faada10c9b50e9cf676149c644cc8252"}, {"name": "virus3.txt", "extension": ".txt", "size": 24, "creation-time": "2023-06-02", "hash": "8522a139cec1b4f7b83aa0ecea94eedf1b752870a22135c931e2d7d786a45f1a"}]}
