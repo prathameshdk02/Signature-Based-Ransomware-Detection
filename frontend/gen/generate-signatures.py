@@ -2,7 +2,6 @@ from pathlib import Path
 from datetime import datetime
 import hashlib
 import json
-import requests
 
 samplePath = __file__ + '/../liveSamples'
 
@@ -37,15 +36,6 @@ final_obj = {
 
 with open("sampleData.txt","w") as sampleData:
     json.dump(final_obj,sampleData)
-
-
-# json_obj = json.dumps(final_obj,indent=4)
-
-# print(json_obj)
-
-
-# response = requests.post('http://localhost:3000/scan',json=final_obj)
-# print(response)
 
 
 
