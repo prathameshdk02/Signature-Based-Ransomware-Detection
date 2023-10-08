@@ -9,6 +9,7 @@ const app = express();
 
 // User-defined Imports Here...
 const { mongoConnect, getMongoDB } = require('./util/mongoDB');
+// const { formatUptime } = require('./util/utility')
 
 // Parsing Request Bodies...
 app.use(bodyParser.urlencoded());
@@ -20,6 +21,34 @@ app.get('/', (req, res) => {
     res.send('<h1>Welcome to our Backend.</h1>');
 });
 
+
+app.get('/initial', (req, res) => {
+    const db = getMongoDB().db('signatures');
+    const collection = db.collection('hashes');
+
+    let resp = {
+        status: 'Online',
+        connection: 'Active',
+        uptime: Math.floor(process.uptime()),
+        domain: req.get('host'),
+        backend: 'ExpressJS'
+    }
+
+    collection.estimatedDocumentCount().then((count) => {
+        resp = {
+            samples: count,
+            ...resp
+        }
+        res.send(JSON.stringify(resp));
+    }).catch(() => {
+        resp = {
+            samples: 0,
+            ...resp
+        }
+        res.send(JSON.stringify(resp));
+    })   
+})
+
 /* 
     Parse incoming request body.
     - Accept list of elements.
@@ -30,7 +59,12 @@ app.post('/scan', (req, res) => {
     const collection = db.collection('hashes');
 
     collection.findOne({ hash: { $eq: `${req.body.hash}` } }).then((doc) => {
+
         if (doc) {
+            doc = {
+                isSafe: false,
+                ...doc
+            }
             return res.send(JSON.stringify(doc));
         }
         res.send(
