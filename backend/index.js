@@ -49,20 +49,17 @@ app.get('/initial', (req, res) => {
     })   
 })
 
-/* 
-    Parse incoming request body.
-    - Accept list of elements.
-    - return the results as json.
-*/
+// Route to handle & check for matching hash...
 app.post('/scan', (req, res) => {
     const db = getMongoDB().db('signatures');
     const collection = db.collection('hashes');
 
     collection.findOne({ hash: { $eq: `${req.body.hash}` } }).then((doc) => {
-
         if (doc) {
             doc = {
                 isSafe: false,
+                fileName: req.body.filename,
+                fileSize: req.body.size,
                 ...doc
             }
             return res.send(JSON.stringify(doc));
@@ -70,6 +67,8 @@ app.post('/scan', (req, res) => {
         res.send(
             JSON.stringify({
                 isSafe: true,
+                fileName: req.body.filename,
+                fileSize: req.body.size
             })
         );
     });

@@ -1,13 +1,17 @@
 import customtkinter as ctk
 from customtkinter import filedialog
 from tkinter import IntVar
-from PIL import Image, ImageTk
+from PIL import Image
 
 import hashlib
 from pathlib import Path
 from datetime import datetime
 from time import time
 import requests
+
+# Domain Name for Web Requests
+# domainName = "https://ransom-detect.cyclic.cloud/"
+domainName = "http://localhost:3000/"
 
 
 # Frame Foreground Colors
@@ -19,34 +23,39 @@ frameLabelTextColor = "#dce4ee"
 frameTextColorPrimary = "grey"
 frameTextColorSecondary = "#6f6f6f"
 
+
+# Setting Appearance Modes
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
+
+# Initializing App
 app = ctk.CTk(fg_color=baseFrameFG)
 
+
+# Window Geometry & Title
 app.title("Ransomware Detection")
 app.resizable(False, False)
 app.geometry("900x500")
 
 
-# Fonts
+# Custom Fonts
 fontFrameLabelBold = ctk.CTkFont("Segoe UI", 13, "bold")
 fontFrameLabel = ctk.CTkFont("Segoe UI", 13)
 baseFramePadY = (10, 10)
 baseFramePadX = (10, 10)
 
+
+# Base Frames
 baseFrameLeft = ctk.CTkFrame(app, corner_radius=12, fg_color=baseFrameFG)
 baseFrameLeft.pack(side="left", fill="both", pady=baseFramePadY, padx=baseFramePadX)
 
 baseFrameMid = ctk.CTkFrame(app, width=400, fg_color=baseFrameFG)
 baseFrameMid.pack(side="left", fill="both", expand=True, pady=baseFramePadY)
 
-baseFrameRight = ctk.CTkFrame(
-    app,
-    corner_radius=12,
-    fg_color=baseFrameFG,
-)
+baseFrameRight = ctk.CTkFrame(app, corner_radius=12, fg_color=baseFrameFG)
 baseFrameRight.pack(side="left", fill="both", pady=baseFramePadY, padx=baseFramePadX)
+
 
 # Child Frames of baseFrameLeft
 baseFrameLeft1 = ctk.CTkFrame(
@@ -68,6 +77,7 @@ baseFrameLeft2 = ctk.CTkFrame(
 )
 baseFrameLeft2.pack(side="top", fill="both", pady=(5, 0))
 
+
 # Child frames of baseFrameMid
 baseFrameMid1 = ctk.CTkFrame(
     baseFrameMid,
@@ -78,7 +88,7 @@ baseFrameMid1 = ctk.CTkFrame(
     height=185,
     width=400,
 )
-baseFrameMid1.pack(side="top", fill="x", ipadx=5, ipady=5, pady=(0, 5))
+baseFrameMid1.pack(side="top", fill="x", pady=(0, 5))
 
 baseFrameMid2 = ctk.CTkFrame(
     baseFrameMid,
@@ -101,6 +111,7 @@ baseFrameMid3 = ctk.CTkFrame(
     width=400,
 )
 baseFrameMid3.pack(side="top", fill="x", pady=(5, 5))
+
 
 # Input File Details Pane..
 frameLabelLeft2 = ctk.CTkLabel(
@@ -270,6 +281,7 @@ filePrevButton = ctk.CTkButton(
     height=30,
     fg_color=frameLabelFG,
     anchor="center",
+    state='disabled',
     font=ctk.CTkFont("Arial", 15, "bold"),
     command=getPrevFileStats,
 )
@@ -283,6 +295,7 @@ fileNextButton = ctk.CTkButton(
     height=30,
     fg_color=frameLabelFG,
     anchor="center",
+    state='disabled',
     font=ctk.CTkFont("Arial", 15, "bold"),
     command=getNextFileStats,
 )
@@ -341,6 +354,7 @@ inputComboBox.place(x=15, y=55)
 def openFile():
     global inputFiles
     inputFiles = list(filedialog.askopenfilenames())
+    resultNextButton.configure(state='disabled')
 
     if len(inputFiles) != 0:
         inputComboBox.configure(
@@ -371,6 +385,7 @@ chooseButton = ctk.CTkButton(
 )
 chooseButton.place(x=345, y=55)
 
+
 # Input Frame Scan Options..
 frameLabelMid4 = ctk.CTkLabel(
     baseFrameMid1,
@@ -397,6 +412,11 @@ frameLabelMid3 = ctk.CTkLabel(
 )
 frameLabelMid3.place(x=0, y=100)
 
+def scanRadioHandler():
+    if scanRadio_var.get() == 2:
+        resultNextButton.place(x=160, y=10)
+    else:
+        resultNextButton.place_forget()
 
 # Scan Option Radio Buttons...
 scanRadio_var = IntVar(value=1)
@@ -407,6 +427,7 @@ scanRadioSingle = ctk.CTkRadioButton(
     value=1,
     font=fontFrameLabelBold,
     text_color=frameTextColorSecondary,
+    command=scanRadioHandler
 )
 scanRadioSingle.place(x=20, y=148)
 
@@ -417,297 +438,175 @@ scanRadioMultiple = ctk.CTkRadioButton(
     value=2,
     font=fontFrameLabelBold,
     text_color=frameTextColorSecondary,
+    command=scanRadioHandler
 )
 scanRadioMultiple.place(x=170, y=148)
 
+
 # Results Rendering Code..
-
 scanResults = {}
-
-# To be Refactored...
-def renderScanResults(result):
-    # Render the Child Frame...
-    baseFrameRight1 = ctk.CTkFrame(
-        baseFrameRight,
-        corner_radius=12,
-        fg_color=baseFrameChildFG,
-        border_color=baseFrameChildBC,
-        border_width=1,
-    )
-    baseFrameRight1.pack(side="top", expand=True, fill="both")
-
-    if result["isSafe"]:
-        # Render Safe Results...
-        frameLabelRight1 = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Results",
-            font=fontFrameLabelBold,
-            width=80,
-            height=30,
-            fg_color=frameLabelFG,
-            text_color=frameLabelTextColor,
-            corner_radius=4,
-        )
-        frameLabelRight1.place(x=0, y=10)
-
-        safeImage = ctk.CTkImage(
-            Image.open(__file__ + "/../../../assets/img/safe.png"), size=(125, 125)
-        )
-        safeImageLabel = ctk.CTkLabel(baseFrameRight1, image=safeImage, text="")
-        safeImageLabel.place(x=35, y=60)
-
-        safeResultsLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Safe",
-            width=100,
-            text_color="#017dcc",
-            font=ctk.CTkFont("Segoe UI", 34, "bold"),
-        )
-        safeResultsLabel.place(x=55, y=195)
-
-        safeResultsSubLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="The file looks Safe.",
-            text_color=frameTextColorSecondary,
-            font=fontFrameLabelBold,
-        )
-        safeResultsSubLabel.place(x=45, y=237)
-
-        safeScanDetailsSubLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Scan Details",
-            font=fontFrameLabelBold,
-            width=120,
-            height=30,
-            fg_color="white",
-            text_color=frameTextColorPrimary,
-            corner_radius=4,
-        )
-        safeScanDetailsSubLabel.place(x=68, y=290)
-
-        safeScanDetailsLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Info.",
-            font=fontFrameLabelBold,
-            width=75,
-            height=30,
-            fg_color=frameLabelFG,
-            text_color=frameLabelTextColor,
-            corner_radius=4,
-        )
-        safeScanDetailsLabel.place(x=0, y=290)
-
-        # Safe Scan Statistics...
-
-        scanStatsStatus = ctk.CTkLabel(
-            baseFrameRight1,
-            text="File Name:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsStatus.place(x=10, y=330)
-
-        scanStatsStatus = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Status:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsStatus.place(x=10, y=350)
-
-        scanStatsRansom = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Ransomware:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsRansom.place(x=10, y=370)
-
-        scanStatsSeverity = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Severity:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsSeverity.place(x=10, y=390)
-
-        scanStatsElapse = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Elapsed Time:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsElapse.place(x=10, y=410)
-
-        scanStatsSize = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Size:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsSize.place(x=10, y=430)
-    else:
-        frameLabelRight1 = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Results",
-            font=fontFrameLabelBold,
-            width=80,
-            height=30,
-            fg_color=frameLabelFG,
-            text_color=frameLabelTextColor,
-            corner_radius=4,
-        )
-        frameLabelRight1.place(x=0, y=10)
-
-        unsafeImage = ctk.CTkImage(
-            Image.open(__file__ + "/../../../assets/img/unsafe.png"), size=(125, 125)
-        )
-        unsafeImageLabel = ctk.CTkLabel(baseFrameRight1, image=unsafeImage, text="")
-        unsafeImageLabel.place(x=35, y=60)
-
-        unsafeResultsLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Alert!",
-            width=100,
-            text_color="#017dcc",
-            font=ctk.CTkFont("Segoe UI", 34, "bold"),
-        )
-        unsafeResultsLabel.place(x=55, y=195)
-
-        unsafeResultsSubLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="The file isn't Safe.",
-            text_color=frameTextColorSecondary,
-            font=fontFrameLabelBold,
-        )
-        unsafeResultsSubLabel.place(x=45, y=237)
-
-        unsafeScanDetailsSubLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Scan Details",
-            font=fontFrameLabelBold,
-            width=120,
-            height=30,
-            fg_color="white",
-            text_color=frameTextColorPrimary,
-            corner_radius=4,
-        )
-        unsafeScanDetailsSubLabel.place(x=68, y=290)
-
-        unsafeScanDetailsLabel = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Info.",
-            font=fontFrameLabelBold,
-            width=75,
-            height=30,
-            fg_color=frameLabelFG,
-            text_color=frameLabelTextColor,
-            corner_radius=4,
-        )
-        unsafeScanDetailsLabel.place(x=0, y=290)
-
-        # Safe Scan Statistics...
-
-        scanStatsStatus = ctk.CTkLabel(
-            baseFrameRight1,
-            text="File Name:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsStatus.place(x=10, y=330)
-
-        scanStatsStatus = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Status:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsStatus.place(x=10, y=350)
-
-        scanStatsRansom = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Ransomware:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsRansom.place(x=10, y=370)
-
-        scanStatsSeverity = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Severity:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsSeverity.place(x=10, y=390)
-
-        scanStatsElapse = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Elapsed Time:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsElapse.place(x=10, y=410)
-
-        scanStatsSize = ctk.CTkLabel(
-            baseFrameRight1,
-            text="Size:",
-            font=fontFrameLabelBold,
-            text_color=frameTextColorSecondary,
-            height=20,
-        )
-        scanStatsSize.place(x=10, y=430)
-
-    elapseEnd = time()
-    print(elapseEnd-elapseStart)    
-
-
-def hashGen(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
 elapseStart = 0
-previouslyScanned = False
+currentActiveDisplay = None
+
+
+
+def renderActiveDisplay(display, results=None):
+    global elapseEnd
+    global currentActiveDisplay
+    if display == "scan":
+        if currentActiveDisplay == "scan":
+            updateServerStats()
+            return
+        currentActiveDisplay = "scan"
+        resultsImage = ctk.CTkImage(
+            Image.open(__file__ + "/../../../assets/img/default.png"),
+            size=(125, 125),
+        )
+        resultsImageLabel.configure(image=resultsImage, text="")
+        resultsLabel.configure(text="Scan")
+        resultsSubLabel.configure(text="Results appear here.")
+        resultsScanDetailsSubLabel.configure(text="Server Stats.")
+        serverStatsLabelStatus.configure(text="Status:")
+        serverStatsLabelConn.configure(text="Connection:")
+        serverStatsLabelUptime.configure(text="Uptime:")
+        serverStatsLabelSamples.configure(text="Samples:")
+        serverStatsLabelDomain.configure(text="Domain:")
+        serverStatsLabelBackend.configure(text="Backend:")
+        updateServerStats()
+    elif display == "results":
+        if results == None:
+            print("Where are the Results?")
+            return
+        elif results["isSafe"]:
+            currentActiveDisplay = "results"
+            resultsImage = ctk.CTkImage(
+                Image.open(__file__ + "/../../../assets/img/safe.png"),
+                size=(125, 125),
+            )
+            resultsImageLabel.configure(image=resultsImage, text="")
+            resultsLabel.configure(text="Safe")
+            resultsSubLabel.configure(text="The file looks Safe.")
+            resultsScanDetailsSubLabel.configure(text="Scan Details.")
+            serverStatsLabelStatus.configure(text="Name:")
+            serverStatsLabelConn.configure(text="Status:")
+            serverStatsLabelUptime.configure(text="Ransomware:")
+            serverStatsLabelSamples.configure(text="Severity:")
+            serverStatsLabelDomain.configure(text="Elapsed Time:")
+            serverStatsLabelBackend.configure(text="Size:")
+
+            elapseEnd = time()
+            elapse = elapseEnd - elapseStart
+
+            serverStatsStatus.configure(text=results['fileName'])
+            serverStatsConn.configure(text='Safe')
+            serverStatsUptime.configure(text='No')
+            serverStatsSamples.configure(text='None')
+            serverStatsDomain.configure(text=str(round(elapse,3))+'s')
+            serverStatsBackend.configure(text=str(results['fileSize'])+' bytes')
+
+            serverStatsStatus.place_forget()
+            serverStatsConn.place_forget()
+            serverStatsUptime.place_forget()
+            serverStatsSamples.place_forget()
+            serverStatsDomain.place_forget()
+            serverStatsBackend.place_forget()
+
+            serverStatsStatus.place(x=56, y=330)
+            serverStatsConn.place(x=56, y=350)
+            serverStatsUptime.place(x=96, y=370)
+            serverStatsSamples.place(x=68, y=390)
+            serverStatsBackend.place(x=42, y=410)
+            serverStatsDomain.place(x=100, y=430)
+        else:
+            # print(results)
+            currentActiveDisplay = "results"
+            resultsImage = ctk.CTkImage(
+                Image.open(__file__ + "/../../../assets/img/unsafe.png"),
+                size=(125, 125),
+            )
+            resultsImageLabel.configure(image=resultsImage, text="")
+            resultsLabel.configure(text="Alert")
+            resultsSubLabel.configure(text="The file isn't Safe.")
+            resultsScanDetailsSubLabel.configure(text="Scan Details.")
+            serverStatsLabelStatus.configure(text="Name:")
+            serverStatsLabelConn.configure(text="Status:")
+            serverStatsLabelUptime.configure(text="Ransomware:")
+            serverStatsLabelSamples.configure(text="Severity:")
+            serverStatsLabelDomain.configure(text="Elapsed Time:")
+            serverStatsLabelBackend.configure(text="Size:")
+
+            serverStatsStatus.configure(text=results['fileName'])
+            serverStatsConn.configure(text='Malicious')
+            serverStatsUptime.configure(text='Yes')
+            elapseEnd = time()
+            elapse = elapseEnd - elapseStart
+            severity = 'Medium' if results['size'] < 20000 else 'High'
+            serverStatsSamples.configure(text=severity)
+            serverStatsDomain.configure(text=str(round(elapse,3))+'s')
+            serverStatsBackend.configure(text=str(results['fileSize'])+' bytes')
+
+            serverStatsStatus.place_forget()
+            serverStatsConn.place_forget()
+            serverStatsUptime.place_forget()
+            serverStatsSamples.place_forget()
+            serverStatsDomain.place_forget()
+            serverStatsBackend.place_forget()
+
+            serverStatsStatus.place(x=56, y=330)
+            serverStatsConn.place(x=56, y=350)
+            serverStatsUptime.place(x=96, y=370)
+            serverStatsSamples.place(x=68, y=390)
+            serverStatsBackend.place(x=42, y=410)
+            serverStatsDomain.place(x=100, y=430)
 
 def scanNowHandler():
+    if len(inputFiles) == 0:
+        return
+    
     # Calculate elapsed Time
     global elapseStart
     elapseStart = time()
 
-    # Destroy Previous Frame...
-    if not previouslyScanned:
-        pass
-
-
     if scanRadio_var.get() == 1:
         # Single File Scan
         inputPath = inputComboSelected.get()
-        hashObj = {"hash": f"${hashGen(inputPath)}"}
+        fileSample = Path(inputPath)
+        hashObj = {
+            "filename": f'{fileSample.name}',
+            "size": fileSample.stat().st_size,
+            "hash": f"{hashlib.sha256(fileSample.read_bytes()).hexdigest()}",
+        }
         # hashObj = {
+        #     "filename": f'{fileSample.name}',
+        #     "size": fileSample.stat().st_size,
         #     "hash": "acd7bea8e0e6e76c5ad0498411812695ea5a9809c8e75fdb5b149d3c3b99190c"
         # }
-        singleResponse = requests.post("http://localhost:3000/scan", json=hashObj)
+        singleResponse = requests.post(domainName + "scan", json=hashObj)
         scanResults[inputPath] = singleResponse.json()
-        renderScanResults(scanResults[inputPath])
+        renderActiveDisplay('results',scanResults[inputPath])
     else:
         # Multi File Scan
+        if len(inputFiles) == 1:
+            scanRadio_var.set(1)
+            scanNowHandler()
+            scanRadioHandler()
+            return
+        
         for inputPath in inputFiles:
-            hashObj = {"hash": f"${hashGen(inputPath)}"}
-            singleResponse = requests.post("http://localhost:3000/scan", json=hashObj)
+            fileSample = Path(inputPath)
+            hashObj = {
+                "filename": f"{fileSample.name}",
+                "size": fileSample.stat().st_size,
+                "hash": f"{hashlib.sha256(fileSample.read_bytes()).hexdigest()}",
+            }
+            singleResponse = requests.post(domainName + "scan", json=hashObj)
             # Don't Update Continually, just store the results...
             scanResults[inputPath] = singleResponse.json()
 
-        renderScanResults(scanResults[inputComboSelected.get()])    
+        renderActiveDisplay('results',scanResults[inputComboSelected.get()])
+        # Need to add in a button...
+        resultNextButton.configure(state='normal')
+
 
 
 scanNowButton = ctk.CTkButton(
@@ -720,6 +619,7 @@ scanNowButton = ctk.CTkButton(
     command=scanNowHandler,
 )
 scanNowButton.place(x=345, y=143)
+
 
 # Results Frame...
 
@@ -743,6 +643,32 @@ frameLabelRight1 = ctk.CTkLabel(
     corner_radius=4,
 )
 frameLabelRight1.place(x=0, y=10)
+
+def getNextResult():
+    currentFileIndex = inputFiles.index(inputComboSelected.get())
+    if currentFileIndex == len(inputFiles) - 1:
+        currentFileIndex = 0
+    else:
+        currentFileIndex += 1
+
+    inputComboSelected.set(inputFiles[currentFileIndex])
+    getFileStats(inputFiles[currentFileIndex])
+    renderActiveDisplay('results',scanResults[inputFiles[currentFileIndex]])
+    pass
+
+# Next Button for Multi Results...
+resultNextButton = ctk.CTkButton(
+    baseFrameRight1,
+    corner_radius=4,
+    text=">",
+    width=35,
+    height=30,
+    fg_color=frameLabelFG,
+    anchor="center",
+    state='disabled',
+    font=ctk.CTkFont("Arial", 15, "bold"),
+    command=getNextResult,
+)
 
 resultsImage = ctk.CTkImage(
     Image.open(__file__ + "/../../../assets/img/default.png"), size=(125, 125)
@@ -836,7 +762,7 @@ serverStatsLabelDomain = ctk.CTkLabel(
     text_color=frameTextColorSecondary,
     height=20,
 )
-serverStatsLabelDomain.place(x=10, y=410)
+serverStatsLabelDomain.place(x=10, y=430)
 
 serverStatsLabelBackend = ctk.CTkLabel(
     baseFrameRight1,
@@ -845,7 +771,7 @@ serverStatsLabelBackend = ctk.CTkLabel(
     text_color=frameTextColorSecondary,
     height=20,
 )
-serverStatsLabelBackend.place(x=10, y=430)
+serverStatsLabelBackend.place(x=10, y=410)
 
 
 # Server Stats Actual Values
@@ -892,7 +818,7 @@ serverStatsDomain = ctk.CTkLabel(
     text_color=frameTextColorSecondary,
     height=20,
 )
-serverStatsDomain.place(x=70, y=410)
+serverStatsDomain.place(x=12, y=450)
 
 serverStatsBackend = ctk.CTkLabel(
     baseFrameRight1,
@@ -901,12 +827,12 @@ serverStatsBackend = ctk.CTkLabel(
     text_color=frameTextColorSecondary,
     height=20,
 )
-serverStatsBackend.place(x=73, y=430)
+serverStatsBackend.place(x=73, y=410)
 
-def getServerStats():
+def updateServerStats():
     response = {}
     try:
-        response = requests.get('http://localhost:3000/initial').json()
+        response = requests.get(domainName + "initial").json()
     except:
         response = {
             "status": "Offline",
@@ -914,7 +840,7 @@ def getServerStats():
             "uptime": "Unknown",
             "samples": "Unknown",
             "domain": "Unknown",
-            "backend": "Unknown"
+            "backend": "Unknown",
         }
     finally:
         serverStatsStatus.configure(text=response['status'])
@@ -924,7 +850,21 @@ def getServerStats():
         serverStatsDomain.configure(text=response['domain'])
         serverStatsBackend.configure(text=response['backend'])
 
-getServerStats()
+        serverStatsStatus.place_forget()
+        serverStatsConn.place_forget()
+        serverStatsUptime.place_forget()
+        serverStatsSamples.place_forget()
+        serverStatsDomain.place_forget()
+        serverStatsBackend.place_forget()
+
+        serverStatsStatus.place(x=60, y=330)
+        serverStatsConn.place(x=93, y=350)
+        serverStatsUptime.place(x=68, y=370)
+        serverStatsSamples.place(x=73, y=390)
+        serverStatsBackend.place(x=73, y=410)
+        serverStatsDomain.place(x=10, y=449)
+
+renderActiveDisplay("scan")
 
 app.mainloop()
 
