@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const app = express();
 
 // User-defined Imports Here...
-const { mongoConnect, getMongoDB } = require('./util/mongoDB');
+const { mongoConnect, getMongoDB } = require('./src/util/mongoDB');
 // const { formatUptime } = require('./util/utility')
 
 // Parsing Request Bodies...
