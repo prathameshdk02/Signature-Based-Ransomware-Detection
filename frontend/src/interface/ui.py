@@ -6,12 +6,12 @@ from PIL import Image
 import hashlib
 from pathlib import Path
 from datetime import datetime
-from time import time
+from time import time, sleep
 import requests
 
 # Domain Name for Web Requests
-# domainName = "https://ransom-detect.cyclic.cloud/"
-domainName = "http://localhost:3000/"
+domainName = "https://ransom-detect.cyclic.cloud/"
+# domainName = "http://localhost:3000/"
 
 
 # Frame Foreground Colors
@@ -96,7 +96,7 @@ baseFrameMid2 = ctk.CTkFrame(
     fg_color=baseFrameChildFG,
     border_color=baseFrameChildBC,
     border_width=1,
-    height=155,
+    height=130,
     width=400,
 )
 baseFrameMid2.pack(side="top", fill="x", pady=(5, 5))
@@ -281,7 +281,7 @@ filePrevButton = ctk.CTkButton(
     height=30,
     fg_color=frameLabelFG,
     anchor="center",
-    state='disabled',
+    state="disabled",
     font=ctk.CTkFont("Arial", 15, "bold"),
     command=getPrevFileStats,
 )
@@ -295,7 +295,7 @@ fileNextButton = ctk.CTkButton(
     height=30,
     fg_color=frameLabelFG,
     anchor="center",
-    state='disabled',
+    state="disabled",
     font=ctk.CTkFont("Arial", 15, "bold"),
     command=getNextFileStats,
 )
@@ -354,7 +354,8 @@ inputComboBox.place(x=15, y=55)
 def openFile():
     global inputFiles
     inputFiles = list(filedialog.askopenfilenames())
-    resultNextButton.configure(state='disabled')
+    renderActiveDisplay("scan")
+    resultNextButton.configure(state="disabled")
 
     if len(inputFiles) != 0:
         inputComboBox.configure(
@@ -412,11 +413,13 @@ frameLabelMid3 = ctk.CTkLabel(
 )
 frameLabelMid3.place(x=0, y=100)
 
+
 def scanRadioHandler():
     if scanRadio_var.get() == 2:
         resultNextButton.place(x=160, y=10)
     else:
         resultNextButton.place_forget()
+
 
 # Scan Option Radio Buttons...
 scanRadio_var = IntVar(value=1)
@@ -427,7 +430,7 @@ scanRadioSingle = ctk.CTkRadioButton(
     value=1,
     font=fontFrameLabelBold,
     text_color=frameTextColorSecondary,
-    command=scanRadioHandler
+    command=scanRadioHandler,
 )
 scanRadioSingle.place(x=20, y=148)
 
@@ -438,16 +441,92 @@ scanRadioMultiple = ctk.CTkRadioButton(
     value=2,
     font=fontFrameLabelBold,
     text_color=frameTextColorSecondary,
-    command=scanRadioHandler
+    command=scanRadioHandler,
 )
 scanRadioMultiple.place(x=170, y=148)
 
+# Progress Bar Rendering...
+frameLabelMid22 = ctk.CTkLabel(
+    baseFrameMid2,
+    text="Awaiting file input.",
+    font=fontFrameLabelBold,
+    width=150,
+    height=30,
+    fg_color="white",
+    anchor='w',
+    text_color=frameTextColorPrimary,
+    corner_radius=8,
+    padx=10,
+)
+frameLabelMid22.place(x=70, y=12)
 
-# Results Rendering Code..
+frameLabelMid21 = ctk.CTkLabel(
+    baseFrameMid2,
+    text="Status",
+    font=fontFrameLabelBold,
+    width=75,
+    height=30,
+    fg_color=frameLabelFG,
+    text_color=frameLabelTextColor,
+    corner_radius=4,
+)
+frameLabelMid21.place(x=0, y=12)
+
+statusProgressDesc = ctk.CTkLabel(
+    baseFrameMid2,
+    text="Idle",
+    width=200,
+    anchor='w',
+    text_color=frameTextColorSecondary,
+    font=fontFrameLabelBold,
+)
+statusProgressDesc.place(x=15, y=47)
+
+statusProgressBar = ctk.CTkProgressBar(
+    baseFrameMid2,
+    width=400,
+    height=30,
+    orientation="horizontal",
+    fg_color="white",
+    corner_radius=1,
+    mode="determinate",
+    progress_color="#007edf",
+    border_color="grey",
+    border_width=1,
+)
+statusProgressBar.set(0)
+statusProgressBar.place(x=15, y=77)
+
+# Backup Option Rendering...
+frameLabelMid32 = ctk.CTkLabel(
+    baseFrameMid3,
+    text="Choose Backup Options.",
+    font=fontFrameLabelBold,
+    height=30,
+    fg_color="white",
+    anchor='w',
+    text_color=frameTextColorPrimary,
+    corner_radius=8,
+    padx=10,
+)
+frameLabelMid32.place(x=70, y=12)
+
+frameLabelMid31 = ctk.CTkLabel(
+    baseFrameMid3,
+    text="Backup",
+    font=fontFrameLabelBold,
+    width=75,
+    height=30,
+    fg_color=frameLabelFG,
+    text_color=frameLabelTextColor,
+    corner_radius=4,
+)
+frameLabelMid31.place(x=0, y=12)
+
+# Results Rendering...
 scanResults = {}
 elapseStart = 0
 currentActiveDisplay = None
-
 
 
 def renderActiveDisplay(display, results=None):
@@ -463,7 +542,9 @@ def renderActiveDisplay(display, results=None):
             size=(125, 125),
         )
         resultsImageLabel.configure(image=resultsImage, text="")
-        resultsLabel.configure(text="Scan")
+        resultsLabel.configure(text="Scan", text_color="#017dcc")
+        resultsLabel.pack_forget()
+        resultsLabel.place(x=55, y=195)
         resultsSubLabel.configure(text="Results appear here.")
         resultsScanDetailsSubLabel.configure(text="Server Stats.")
         serverStatsLabelStatus.configure(text="Status:")
@@ -474,108 +555,129 @@ def renderActiveDisplay(display, results=None):
         serverStatsLabelBackend.configure(text="Backend:")
         updateServerStats()
     elif display == "results":
-        if results == None:
-            print("Where are the Results?")
-            return
-        elif results["isSafe"]:
-            currentActiveDisplay = "results"
+        currentActiveDisplay = "results"
+
+        resultsScanDetailsSubLabel.configure(text="Scan Details.")
+        serverStatsLabelStatus.configure(text="Name:")
+        serverStatsLabelConn.configure(text="Status:")
+        serverStatsLabelUptime.configure(text="Ransomware:")
+        serverStatsLabelSamples.configure(text="Severity:")
+        serverStatsLabelDomain.configure(text="Elapsed Time:")
+        serverStatsLabelBackend.configure(text="Size:")
+
+        serverStatsStatus.place_forget()
+        serverStatsConn.place_forget()
+        serverStatsUptime.place_forget()
+        serverStatsSamples.place_forget()
+        serverStatsDomain.place_forget()
+        serverStatsBackend.place_forget()
+
+        if results["isSafe"]:
             resultsImage = ctk.CTkImage(
                 Image.open(__file__ + "/../../../assets/img/safe.png"),
                 size=(125, 125),
             )
             resultsImageLabel.configure(image=resultsImage, text="")
-            resultsLabel.configure(text="Safe")
+            resultsLabel.configure(text="Safe", text_color="#017dcc")
+            resultsLabel.pack_forget()
+            resultsLabel.place(x=55, y=195)
             resultsSubLabel.configure(text="The file looks Safe.")
-            resultsScanDetailsSubLabel.configure(text="Scan Details.")
-            serverStatsLabelStatus.configure(text="Name:")
-            serverStatsLabelConn.configure(text="Status:")
-            serverStatsLabelUptime.configure(text="Ransomware:")
-            serverStatsLabelSamples.configure(text="Severity:")
-            serverStatsLabelDomain.configure(text="Elapsed Time:")
-            serverStatsLabelBackend.configure(text="Size:")
+            
 
             elapseEnd = time()
             elapse = elapseEnd - elapseStart
 
-            serverStatsStatus.configure(text=results['fileName'])
-            serverStatsConn.configure(text='Safe')
-            serverStatsUptime.configure(text='No')
-            serverStatsSamples.configure(text='None')
-            serverStatsDomain.configure(text=str(round(elapse,3))+'s')
-            serverStatsBackend.configure(text=str(results['fileSize'])+' bytes')
+            serverStatsStatus.configure(text=results["fileName"])
+            serverStatsConn.configure(text="Safe")
+            serverStatsUptime.configure(text="No")
+            serverStatsSamples.configure(text="None")
+            serverStatsDomain.configure(text=str(round(elapse, 3)) + "s")
+            serverStatsBackend.configure(text=str(results["fileSize"]) + " bytes")
 
-            serverStatsStatus.place_forget()
-            serverStatsConn.place_forget()
-            serverStatsUptime.place_forget()
-            serverStatsSamples.place_forget()
-            serverStatsDomain.place_forget()
-            serverStatsBackend.place_forget()
-
-            serverStatsStatus.place(x=56, y=330)
-            serverStatsConn.place(x=56, y=350)
-            serverStatsUptime.place(x=96, y=370)
-            serverStatsSamples.place(x=68, y=390)
-            serverStatsBackend.place(x=42, y=410)
-            serverStatsDomain.place(x=100, y=430)
         else:
-            # print(results)
-            currentActiveDisplay = "results"
             resultsImage = ctk.CTkImage(
                 Image.open(__file__ + "/../../../assets/img/unsafe.png"),
                 size=(125, 125),
             )
             resultsImageLabel.configure(image=resultsImage, text="")
-            resultsLabel.configure(text="Alert")
+            resultsLabel.configure(text="Alert", text_color="#ea510a")
+            resultsLabel.pack_forget()
+            resultsLabel.place(x=52, y=195)
             resultsSubLabel.configure(text="The file isn't Safe.")
-            resultsScanDetailsSubLabel.configure(text="Scan Details.")
-            serverStatsLabelStatus.configure(text="Name:")
-            serverStatsLabelConn.configure(text="Status:")
-            serverStatsLabelUptime.configure(text="Ransomware:")
-            serverStatsLabelSamples.configure(text="Severity:")
-            serverStatsLabelDomain.configure(text="Elapsed Time:")
-            serverStatsLabelBackend.configure(text="Size:")
 
-            serverStatsStatus.configure(text=results['fileName'])
-            serverStatsConn.configure(text='Malicious')
-            serverStatsUptime.configure(text='Yes')
+            serverStatsStatus.configure(text=results["fileName"])
+            serverStatsConn.configure(text="Malicious")
+            serverStatsUptime.configure(text="Yes")
             elapseEnd = time()
             elapse = elapseEnd - elapseStart
-            severity = 'Medium' if results['size'] < 20000 else 'High'
+            severity = "Medium" if results["size"] < 20000 else "High"
             serverStatsSamples.configure(text=severity)
-            serverStatsDomain.configure(text=str(round(elapse,3))+'s')
-            serverStatsBackend.configure(text=str(results['fileSize'])+' bytes')
+            serverStatsDomain.configure(text=str(round(elapse, 3)) + "s")
+            serverStatsBackend.configure(text=str(results["fileSize"]) + " bytes")
 
-            serverStatsStatus.place_forget()
-            serverStatsConn.place_forget()
-            serverStatsUptime.place_forget()
-            serverStatsSamples.place_forget()
-            serverStatsDomain.place_forget()
-            serverStatsBackend.place_forget()
+        serverStatsStatus.place(x=56, y=330)
+        serverStatsConn.place(x=56, y=350)
+        serverStatsUptime.place(x=96, y=370)
+        serverStatsSamples.place(x=68, y=390)
+        serverStatsBackend.place(x=42, y=410)
+        serverStatsDomain.place(x=100, y=430)
 
-            serverStatsStatus.place(x=56, y=330)
-            serverStatsConn.place(x=56, y=350)
-            serverStatsUptime.place(x=96, y=370)
-            serverStatsSamples.place(x=68, y=390)
-            serverStatsBackend.place(x=42, y=410)
-            serverStatsDomain.place(x=100, y=430)
+
+def delay(seconds):
+    app.update_idletasks()
+    sleep(seconds)
+
+
+progressSteps = 20
+progressStepDelay = 0.015
+
+
+# Computationally Expensive...
+def setProgress(value, status=None, label=None):
+    if label != None:
+        # frameLabelMid22.configure(text="")
+        # delay(0.001)
+        frameLabelMid22.configure(
+            text=label,
+            width=150,
+            height=30,
+            anchor='w'
+        )
+
+    if status != None:
+        statusProgressDesc.configure(
+            text=status,
+            width=200,
+            anchor='w'
+        )
+
+    # Incrementing in 50 steps to get a animation effect...
+    incrementValue = (value - statusProgressBar.get()) / progressSteps
+    for i in range(progressSteps):
+        currentValue = statusProgressBar.get()
+        statusProgressBar.set(value=currentValue + incrementValue)
+        delay(progressStepDelay)
+
 
 def scanNowHandler():
     if len(inputFiles) == 0:
         return
-    
+
     # Calculate elapsed Time
     global elapseStart
     elapseStart = time()
 
+    setProgress(0.2, "Starting Scan..", "Processing..")
     if scanRadio_var.get() == 1:
         # Single File Scan
         inputPath = inputComboSelected.get()
         fileSample = Path(inputPath)
         hashObj = {
-            "filename": f'{fileSample.name}',
+            "filename": f"{fileSample.name}",
             "size": fileSample.stat().st_size,
             "hash": f"{hashlib.sha256(fileSample.read_bytes()).hexdigest()}",
         }
+        setProgress(0.4, "Scanning File..")
         # hashObj = {
         #     "filename": f'{fileSample.name}',
         #     "size": fileSample.stat().st_size,
@@ -583,7 +685,9 @@ def scanNowHandler():
         # }
         singleResponse = requests.post(domainName + "scan", json=hashObj)
         scanResults[inputPath] = singleResponse.json()
-        renderActiveDisplay('results',scanResults[inputPath])
+        setProgress(0.8, "Rendering Results..")
+        renderActiveDisplay("results", scanResults[inputPath])
+        setProgress(1, "Done.", "Complete")
     else:
         # Multi File Scan
         if len(inputFiles) == 1:
@@ -591,7 +695,11 @@ def scanNowHandler():
             scanNowHandler()
             scanRadioHandler()
             return
-        
+
+        alertingResults = False
+        alertCount = 0
+
+        setProgress(0.4, "Scanning Multiple Files...")
         for inputPath in inputFiles:
             fileSample = Path(inputPath)
             hashObj = {
@@ -602,11 +710,25 @@ def scanNowHandler():
             singleResponse = requests.post(domainName + "scan", json=hashObj)
             # Don't Update Continually, just store the results...
             scanResults[inputPath] = singleResponse.json()
+            if scanResults[inputPath]["isSafe"] == False:
+                alertingResults = True
+                alertCount += 1
 
-        renderActiveDisplay('results',scanResults[inputComboSelected.get()])
-        # Need to add in a button...
-        resultNextButton.configure(state='normal')
+        setProgress(0.8, "Rendering Results..")
+        renderActiveDisplay("results", scanResults[inputComboSelected.get()])
+        setProgress(1, "Done.", "Complete.")
 
+        if alertingResults:
+            resultNextButton.configure(
+                state="normal", fg_color="#ea510a", text=str(alertCount)
+            )
+        else:
+            resultNextButton.configure(state="normal")
+
+    delay(3)
+    statusProgressBar.set(0)
+    statusProgressDesc.configure(text="Idle")
+    frameLabelMid22.configure(text="Awaiting file input.")
 
 
 scanNowButton = ctk.CTkButton(
@@ -644,6 +766,7 @@ frameLabelRight1 = ctk.CTkLabel(
 )
 frameLabelRight1.place(x=0, y=10)
 
+
 def getNextResult():
     currentFileIndex = inputFiles.index(inputComboSelected.get())
     if currentFileIndex == len(inputFiles) - 1:
@@ -653,8 +776,9 @@ def getNextResult():
 
     inputComboSelected.set(inputFiles[currentFileIndex])
     getFileStats(inputFiles[currentFileIndex])
-    renderActiveDisplay('results',scanResults[inputFiles[currentFileIndex]])
-    pass
+    renderActiveDisplay("results", scanResults[inputFiles[currentFileIndex]])
+    return
+
 
 # Next Button for Multi Results...
 resultNextButton = ctk.CTkButton(
@@ -665,7 +789,7 @@ resultNextButton = ctk.CTkButton(
     height=30,
     fg_color=frameLabelFG,
     anchor="center",
-    state='disabled',
+    state="disabled",
     font=ctk.CTkFont("Arial", 15, "bold"),
     command=getNextResult,
 )
@@ -829,6 +953,7 @@ serverStatsBackend = ctk.CTkLabel(
 )
 serverStatsBackend.place(x=73, y=410)
 
+
 def updateServerStats():
     response = {}
     try:
@@ -843,19 +968,20 @@ def updateServerStats():
             "backend": "Unknown",
         }
     finally:
-        serverStatsStatus.configure(text=response['status'])
-        serverStatsConn.configure(text=response['connection'])
-        serverStatsUptime.configure(text=response['uptime'])
-        serverStatsSamples.configure(text=response['samples'])
-        serverStatsDomain.configure(text=response['domain'])
-        serverStatsBackend.configure(text=response['backend'])
-
         serverStatsStatus.place_forget()
         serverStatsConn.place_forget()
         serverStatsUptime.place_forget()
         serverStatsSamples.place_forget()
         serverStatsDomain.place_forget()
         serverStatsBackend.place_forget()
+        app.update_idletasks()
+        
+        serverStatsStatus.configure(text=response["status"])
+        serverStatsConn.configure(text=response["connection"])
+        serverStatsUptime.configure(text=response["uptime"])
+        serverStatsSamples.configure(text=response["samples"])
+        serverStatsDomain.configure(text=response["domain"])
+        serverStatsBackend.configure(text=response["backend"])
 
         serverStatsStatus.place(x=60, y=330)
         serverStatsConn.place(x=93, y=350)
@@ -863,6 +989,7 @@ def updateServerStats():
         serverStatsSamples.place(x=73, y=390)
         serverStatsBackend.place(x=73, y=410)
         serverStatsDomain.place(x=10, y=449)
+
 
 renderActiveDisplay("scan")
 
