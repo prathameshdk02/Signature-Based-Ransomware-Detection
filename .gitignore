@@ -1,2 +1,5 @@
 live/
 .vscode/settings.json
+.vscode/
+config.json
+test.py

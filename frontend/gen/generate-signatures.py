@@ -1,3 +1,4 @@
+# Custom script to generate Hashes for each Sample in the specified folder.
 from pathlib import Path
 from datetime import datetime
 import hashlib
