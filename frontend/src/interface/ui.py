@@ -3,7 +3,7 @@ from customtkinter import filedialog
 from tkinter import IntVar
 from PIL import Image
 
-import os, signal
+
 import psutil
 import multiprocessing as mp
 import hashlib
@@ -12,14 +12,18 @@ from datetime import datetime
 from time import time, sleep
 import requests
 
+
 from backup import (
     BackupHandler,
     startAutoBackup,
     loadObserverState,
-    saveObserverState,
-    STATE_FILE,
+    saveObserverState
 )
-from encryptBackup import createEncryptedBackup
+from encryptBackup import (
+    createEncryptedBackup,
+    readEncryptedBackup,
+    retrieveBackupZips
+)
 
 
 if __name__ == "__main__":
@@ -315,20 +319,25 @@ if __name__ == "__main__":
         if backupRadio_var.get() == 1:
             # Manual Backup...
             backupNowButton.place_forget()
-            backupNowButton.configure(text='Backup Now (Manual)')
+            # restoreBackupButton.place_forget()
+            restoreBackupButton.place(x=306, y=13)
+
+            backupNowButton.configure(text="Backup Now (Manual)")
             backupNowButton.place(x=262, y=100)
             startAutoBackupButton.configure(state="disabled")
         elif backupRadio_var.get() == 2:
+            restoreBackupButton.place(x=306, y=13)
             backupNowButton.place_forget()
-            backupNowButton.configure(text='Backup Now (Encrypted)')
+            backupNowButton.configure(text="Backup Now (Encrypted)")
             backupNowButton.place(x=262, y=100)
             startAutoBackupButton.configure(state="disabled")
         else:
+            restoreBackupButton.place_forget()
             backupNowButton.place_forget()
             startAutoBackupButton.configure(state="active")
 
         return
-    
+
     frameLabelLeft22 = ctk.CTkLabel(
         baseFrameLeft2,
         text="Backup Type",
@@ -364,7 +373,7 @@ if __name__ == "__main__":
         value=1,
         font=fontFrameLabelBold,
         text_color=frameTextColorSecondary,
-        command=backupRadioHandler
+        command=backupRadioHandler,
     )
     backupRadioManual.place(x=10, y=55)
 
@@ -375,7 +384,7 @@ if __name__ == "__main__":
         value=2,
         font=fontFrameLabelBold,
         text_color=frameTextColorSecondary,
-        command=backupRadioHandler
+        command=backupRadioHandler,
     )
     backupRadioAuto.place(x=10, y=85)
 
@@ -386,7 +395,7 @@ if __name__ == "__main__":
         value=3,
         font=fontFrameLabelBold,
         text_color=frameTextColorSecondary,
-        command=backupRadioHandler
+        command=backupRadioHandler,
     )
     backupRadioEncr.place(x=10, y=115)
 
@@ -425,11 +434,8 @@ if __name__ == "__main__":
 
         # Initial load, when config isn't present...
         if observerState is None:
-            saveObserverState({
-                    "src_dir": "",
-                    "dest_dir": ""
-                })
-            observerState = loadObserverState()    
+            saveObserverState({"src_dir": "", "dest_dir": ""})
+            observerState = loadObserverState()
 
         if "process_pid" not in observerState.keys():
             startAutoBackupButton.configure(text="Start AutoBackup")
@@ -447,11 +453,9 @@ if __name__ == "__main__":
 
         if len(observerState["dest_dir"]) != 0:
             dest_dir = observerState["dest_dir"]
-            backupValueDest.configure(text=dest_dir) 
+            backupValueDest.configure(text=dest_dir)
 
         return
-
-
 
     # Needs to handle
     def autoBackupHandler():
@@ -473,18 +477,13 @@ if __name__ == "__main__":
                 {
                     "src_dir": src_dir,
                     "dest_dir": dest_dir,
-                    "process_pid": autoBackupProc.pid
+                    "process_pid": autoBackupProc.pid,
                 }
             )
         else:
             # Shut down the existing observer...
             process_pid = observerState["process_pid"]
-            saveObserverState(
-                {
-                    "src_dir": src_dir,
-                    "dest_dir": dest_dir
-                }
-            )
+            saveObserverState({"src_dir": src_dir, "dest_dir": dest_dir})
             try:
                 proc = psutil.Process(process_pid)
                 proc.terminate()
@@ -493,7 +492,7 @@ if __name__ == "__main__":
                 print(e)
                 initiateBackupUI()
                 return
-                
+
         initiateBackupUI()
 
     startAutoBackupButton = ctk.CTkButton(
@@ -504,10 +503,9 @@ if __name__ == "__main__":
         width=178,
         height=35,
         command=autoBackupHandler,
-        state="disabled"
+        state="disabled",
     )
     startAutoBackupButton.place(x=10, y=195)
-
 
     # Input Frame Content
     frameLabelMid2 = ctk.CTkLabel(
@@ -588,8 +586,6 @@ if __name__ == "__main__":
         command=openFile,
     )
     chooseButton.place(x=345, y=55)
-
-
 
     # Input Frame Scan Options..
     frameLabelMid4 = ctk.CTkLabel(
@@ -764,7 +760,6 @@ if __name__ == "__main__":
     )
     backupValueDest.place(x=123, y=70)
 
-
     # Opening a folder & updating the UI in accordance with it...
     def openFolder(target):
         global src_dir
@@ -778,28 +773,24 @@ if __name__ == "__main__":
         if target == "Source":
             src_dir = folderPath
             backupValueSource.configure(text=folderPath)
-        else:
+        elif target == "Destination":
             dest_dir = folderPath
             backupValueDest.configure(text=folderPath)
-
+        else:
+            return
+        
         observerState = loadObserverState()
 
         if "process_pid" not in observerState.keys():
-            saveObserverState(
-                {
-                    "src_dir": src_dir,
-                    "dest_dir": dest_dir
-                }
-            )
+            saveObserverState({"src_dir": src_dir, "dest_dir": dest_dir})
         else:
             saveObserverState(
                 {
                     "src_dir": src_dir,
                     "dest_dir": dest_dir,
-                    "process_pid": observerState["process_pid"]
+                    "process_pid": observerState["process_pid"],
                 }
             )
-
 
     chooseSourceButton = ctk.CTkButton(
         baseFrameMid3,
@@ -831,7 +822,7 @@ if __name__ == "__main__":
         if not src_dir or not dest_dir:
             print("Directory not specified...")
             return
-        
+
         if backupRadio_var.get() == 1:
             backup_handler = BackupHandler(src_dir, dest_dir)
             setProgress(0.4, "Initiating Backup..")
@@ -842,39 +833,35 @@ if __name__ == "__main__":
             statusProgressBar.set(0)
             statusProgressDesc.configure(text="Idle")
             frameLabelMid22.configure(text="Awaiting User Input.")
+
         elif backupRadio_var.get() == 2:
             setProgress(0.3, "Initiating Backup..")
             dt = datetime.now()
-            ts = dt.strftime("%Y%m%d_%H%M%S")
+            ts = dt.strftime("%Y-%m-%d_%H-%M-%S")
 
             mpQueue = mp.Queue()
             mpQueue.put({"success": False})
 
             encrypProcess = mp.Process(
                 target=createEncryptedBackup,
-                args=(
-                    src_dir,
-                    dest_dir,
-                    f"backup_{ts}.zip",
-                    "defaultPass",
-                    mpQueue
-                )
+                args=(src_dir, dest_dir, f"backup_eb_{ts}.zip", mpQueue),
             )
             encrypProcess.start()
             setProgress(0.5, "Creating Encrypted Archive..")
             encrypProcess.join()
 
-            if mpQueue.get()['success']:
+            if mpQueue.get()["success"]:
                 setProgress(1, "Backup Successful..")
             else:
-                setProgress(0.6,"Backup Error, Cleaning up.." )
+                setProgress(0.6, "Backup Error, Cleaning up..")
                 delay(2)
-                setProgress(1,"Cleanup Finished.." )
+                setProgress(1, "Cleanup Finished..")
 
             delay(2)
             statusProgressBar.set(0)
             statusProgressDesc.configure(text="Idle")
             frameLabelMid22.configure(text="Awaiting User Input.")
+            
 
     backupNowButton = ctk.CTkButton(
         baseFrameMid3,
@@ -889,9 +876,216 @@ if __name__ == "__main__":
     )
     backupNowButton.place(x=262, y=100)
 
+    # Variables for Backup Restoration...
+    lookout_dir = ""
+    restoration_dir = ""
+    resComboFiles = []
+    resComboFilePaths = []
+    resComboSelected = ctk.StringVar(value="")
+
+
+    def restoreNow():
+        # New tkinter window...
+        resWindow = ctk.CTkToplevel(app,fg_color=baseFrameFG)
+        resWindow.transient(app)
+        resWindow.geometry("495x203")
+        resWindow.resizable(False, False)
+        resWindow.title("Restore Encrypted Backup")
+        # resWindow.attributes("-topmost", "true")
+
+        resFrame = ctk.CTkFrame(
+            resWindow,
+            corner_radius=12,
+            fg_color=baseFrameChildFG,
+            border_color=baseFrameChildBC,
+            border_width=1,
+        )
+        resFrame.pack(fill='both',padx=10,pady=(10,10))
+        
+        resFrameLabel21 = ctk.CTkLabel(
+            resFrame,
+            text="Choose Folder Paths.",
+            font=fontFrameLabelBold,
+            height=30,
+            fg_color="white",
+            anchor="w",
+            text_color=frameTextColorPrimary,
+            corner_radius=8,
+            padx=10,
+        )
+        resFrameLabel21.place(x=70, y=12)
+
+        resFrameLabel11 = ctk.CTkLabel(
+            resFrame,
+            text="Restore",
+            font=fontFrameLabelBold,
+            width=75,
+            height=30,
+            fg_color=frameLabelFG,
+            text_color=frameLabelTextColor,
+            corner_radius=4,
+        )
+        resFrameLabel11.place(x=0, y=12)
+
+        def getRestoreFilePath():
+            selectedFile = resComboSelected.get()
+            # Find out the index of that path...
+            selectedIndex = -1
+            try:
+                selectedIndex = resComboFiles.index(selectedFile)
+            except Exception as e:
+                print(e)
+                return
+            
+            selectedPath = resComboFilePaths[selectedIndex]
+            return selectedPath
+
+        def test(choice):
+            print(getRestoreFilePath())
+
+        resComboBox = ctk.CTkComboBox(
+            resFrame,
+            width=320,
+            height=30,
+            values=resComboFiles,
+            state="disabled",
+            variable=resComboSelected,
+            font=fontFrameLabel,
+            dropdown_font=fontFrameLabel,
+            command=test
+        )
+        resComboBox.place(x=10, y=55)
+
+        def selectResFolder(target):
+            global lookout_dir
+            global restoration_dir
+            global resComboFiles
+            global resComboFilePaths
+
+            windowTitle = 'Choose the Directory with Encrypted Files' if target == 'Lookout' else 'Choose the Restoration Directory.'
+
+            folderPath = filedialog.askdirectory(title=windowTitle)
+
+            if not folderPath:
+                return
+            
+            if target == "Lookout":
+                lookout_dir = folderPath
+                resLookoutValue.place_forget()
+                resLookoutValue.configure(text=lookout_dir)
+                resLookoutValue.place(x=105, y=90)
+
+                # Make a call to a function that fetches all the .zip files...
+                resComboFilePaths = retrieveBackupZips(lookout_dir)
+                resComboFiles = [Path(filePath).name for filePath in resComboFilePaths]
+                resComboBox.configure(values=resComboFiles, state="normal", button_color=frameLabelFG)
+                resComboSelected.set(resComboFiles[0])
+
+            elif target == "Restoration":
+                restoration_dir = folderPath
+                resRestorationValue.place_forget()
+                resRestorationValue.configure(text=restoration_dir)
+                resRestorationValue.place(x=125, y=110)
+            
+            else:
+                return      
+
+
+        resLookoutButton = ctk.CTkButton(
+            resFrame,
+            corner_radius=6,
+            text="Change Lookout",
+            width=130,
+            height=31,
+            fg_color=frameLabelFG,
+            anchor="center",
+            font=fontFrameLabelBold,
+            command=lambda: selectResFolder("Lookout"),
+        )
+        resLookoutButton.place(x=13, y=140)
+
+        resLookoutLabel = ctk.CTkLabel(
+            resFrame,
+            text="Lookout Path:",
+            font=fontFrameLabelBold,
+            width=30,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        resLookoutLabel.place(x=13, y=92)
+
+        resLookoutValue = ctk.CTkLabel(
+            resFrame,
+            text="Not Chosen Yet.",
+            font=fontFrameLabel,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        resLookoutValue.place(x=105, y=92)
+
+        resRestorationLabel = ctk.CTkLabel(
+            resFrame,
+            text="Restoration Path:",
+            font=fontFrameLabelBold,
+            width=30,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        resRestorationLabel.place(x=13, y=112)
+
+        resRestorationValue = ctk.CTkLabel(
+            resFrame,
+            text="Not Chosen Yet.",
+            font=fontFrameLabel,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        resRestorationValue.place(x=125, y=112)
+
+        resRestorationButton = ctk.CTkButton(
+            resFrame,
+            corner_radius=6,
+            text="Change Restoration",
+            width=150,
+            height=31,
+            fg_color=frameLabelFG,
+            anchor="center",
+            font=fontFrameLabelBold,
+            command=lambda: selectResFolder("Restoration"),
+        )
+        resRestorationButton.place(x=150, y=140)
+
+        def restoreNowHandler():
+            readEncryptedBackup(getRestoreFilePath(),restoration_dir)
+            pass
+
+        restoreNowButton = ctk.CTkButton(
+            resFrame,
+            fg_color=frameLabelFG,
+            text="Restore Now",
+            font=fontFrameLabelBold,
+            width=120,
+            height=40,
+            command=restoreNowHandler,
+        )
+        restoreNowButton.place(x=340, y=136)
+        pass
+
+    restoreBackupButton = ctk.CTkButton(
+        baseFrameMid3,
+        corner_radius=6,
+        text="Restore Backup",
+        height=30,
+        fg_color=frameLabelFG,
+        anchor="center",
+        font=fontFrameLabelBold,
+        command=restoreNow,
+    )
+    # To be removed...
+    restoreBackupButton.place(x=306, y=13)
+
+
     initiateBackupUI()
-
-
 
     # Results Rendering...
     scanResults = {}
@@ -1343,8 +1537,9 @@ if __name__ == "__main__":
 
     app.mainloop()
 
-# Old Code...
 
+
+# Old Code...
 # app.option_add("*Font", 'SegoeUIVariable')
 
 # app.geometry("800x500")
@@ -1408,3 +1603,32 @@ if __name__ == "__main__":
 #     border_width=1,
 # )
 # bfmFrameTop.place(side="top")
+
+
+# Discarded Modal...
+            # modal = ctk.CTkToplevel(app)
+            # modal.resizable(False, False)
+            # modal.geometry("300x120")
+            # modal.attributes("-topmost", "true")
+            # modal.title("Set Password")
+
+            # modalPassLabel = ctk.CTkLabel(
+            #     modal,
+            #     text="Create a new Password:",
+            #     font=fontFrameLabelBold,
+            #     width=60,
+            #     height=30,
+            #     text_color=frameTextColorSecondary,
+            #     corner_radius=8,
+            # )
+            # modalPassLabel.place(x=10, y=5)
+
+            # modalPass = ctk.CTkTextbox(modal, width=265, height=30)
+            # modalPass.place(x=15, y=35)
+
+            # def setPassword():
+                # password = modalPass.get(1.0, "end-1c")
+                # if password == "":
+                #     return
+                # print(password)
+                # modal.destroy()
