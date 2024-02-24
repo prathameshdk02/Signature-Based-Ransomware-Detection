@@ -24,6 +24,11 @@ from encryptBackup import (
     readEncryptedBackup,
     retrieveBackupZips
 )
+from quarantine import (
+    quarantineFiles,
+    removeFiles,
+    liberateAllFiles
+)
 
 
 if __name__ == "__main__":
@@ -39,6 +44,8 @@ if __name__ == "__main__":
     frameLabelTextColor = "#dce4ee"
     frameTextColorPrimary = "grey"
     frameTextColorSecondary = "#6f6f6f"
+
+    dangerRed = "#ff4747"
 
     # Setting Appearance Modes
     ctk.set_appearance_mode("light")
@@ -319,8 +326,8 @@ if __name__ == "__main__":
         if backupRadio_var.get() == 1:
             # Manual Backup...
             backupNowButton.place_forget()
-            # restoreBackupButton.place_forget()
-            restoreBackupButton.place(x=306, y=13)
+            restoreBackupButton.place_forget()
+            # restoreBackupButton.place(x=306, y=13)
 
             backupNowButton.configure(text="Backup Now (Manual)")
             backupNowButton.place(x=262, y=100)
@@ -520,6 +527,34 @@ if __name__ == "__main__":
         corner_radius=8,
     )
     frameLabelMid2.place(x=65, y=10)
+
+    def startLiberationProcess():
+        setProgress(0.2, "Starting Liberation Operation...")
+        setProgress(0.5, "Restoring Files...")
+        liberateAllFiles()
+        setProgress(0.8, "Files Restored!")
+        delay(0.5)
+        setProgress(1,"Done")
+        delay(2)
+
+        statusProgressBar.set(0)
+        statusProgressDesc.configure(text="Idle")
+        frameLabelMid22.configure(text="Awaiting User Input.")
+        pass
+
+    # Restore Quarantined Files...
+    liberateButton = ctk.CTkButton(
+        baseFrameMid2,
+        corner_radius=6,
+        text="Liberate",
+        height=30,
+        width=90,
+        fg_color=frameLabelFG,
+        anchor="center",
+        font=fontFrameLabelBold,
+        command=startLiberationProcess,
+    )
+    liberateButton.place(x=355, y=12)
 
     frameLabelMid1 = ctk.CTkLabel(
         baseFrameMid1,
@@ -1082,7 +1117,7 @@ if __name__ == "__main__":
         command=restoreNow,
     )
     # To be removed...
-    restoreBackupButton.place(x=306, y=13)
+    # restoreBackupButton.place(x=306, y=13)
 
 
     initiateBackupUI()
@@ -1184,6 +1219,7 @@ if __name__ == "__main__":
             serverStatsBackend.place(x=42, y=410)
             serverStatsDomain.place(x=100, y=430)
 
+    # Does it even work?
     def delay(seconds):
         app.update_idletasks()
         sleep(seconds)
@@ -1208,6 +1244,111 @@ if __name__ == "__main__":
             statusProgressBar.set(value=currentValue + incrementValue)
             delay(progressStepDelay)
 
+    # For Quarntine Functionality...
+    alertingPaths = []
+
+    def renderQuarantineDialog():
+        quarWindow = ctk.CTkToplevel(app,fg_color=baseFrameFG)
+        quarWindow.transient(app)
+        quarWindow.geometry("320x195")
+        quarWindow.resizable(False, False)
+        quarWindow.title("Alert!")
+
+        def startQuarantineProcess():
+            quarWindow.destroy()
+            setProgress(0.2, "Starting Quarantine Operation...")
+            print(alertingPaths)
+            setProgress(0.5, "Quarantining Files...")
+            quarantineFiles(alertingPaths)
+            setProgress(0.8, "Threats Quarantined!")
+            delay(0.5)
+            setProgress(1,"Done")
+            delay(2)
+
+            statusProgressBar.set(0)
+            statusProgressDesc.configure(text="Idle")
+            frameLabelMid22.configure(text="Awaiting User Input.")
+            pass
+
+        def startRemovalProcess():
+            quarWindow.destroy()
+            setProgress(0.2, "Starting Removal Operation...")
+            print(alertingPaths)
+            setProgress(0.5, "Removing Files...")
+            removeFiles(alertingPaths)
+            setProgress(0.8, "Threats Removed!")
+            delay(0.5)
+            setProgress(1,"Done")
+            delay(2)
+
+            statusProgressBar.set(0)
+            statusProgressDesc.configure(text="Idle")
+            frameLabelMid22.configure(text="Awaiting User Input.")
+
+
+        quarFrame = ctk.CTkFrame(
+            quarWindow,
+            corner_radius=12,
+            fg_color=baseFrameChildFG,
+            border_color=baseFrameChildBC,
+            border_width=1,
+        )
+        quarFrame.pack(fill='both',padx=10,pady=(10,10))
+
+        alertImage = ctk.CTkImage(
+            Image.open(Path(__file__ + "/../../../assets/img/exclaim.png")), size=(38, 38)
+        )
+        alertImageLabel = ctk.CTkLabel(quarFrame, image=alertImage, text="")
+        alertImageLabel.place(x=132, y=23)
+
+        alertLabel = ctk.CTkLabel(
+            quarFrame,
+            text="Found Potential Threats.",
+            font=fontFrameLabelBold,
+            width=30,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        alertLabel.place(x=75, y=75)
+
+        alertValue = ctk.CTkLabel(
+            quarFrame,
+            text="Choose to Quarantine or Remove them.",
+            font=fontFrameLabel,
+            height=20,
+            text_color=frameTextColorSecondary,
+        )
+        alertValue.place(x=40, y=95)
+
+        quarantineButton = ctk.CTkButton(
+            quarFrame,
+            corner_radius=6,
+            text="Quarantine",
+            width=132,
+            height=31,
+            fg_color=frameLabelFG,
+            anchor="center",
+            font=fontFrameLabelBold,
+            command=startQuarantineProcess,
+        )
+        quarantineButton.place(x=156, y=130)
+
+        removeButton = ctk.CTkButton(
+            quarFrame,
+            corner_radius=6,
+            text="Remove",
+            width=132,
+            height=31,
+            fg_color=dangerRed,
+            anchor="center",
+            font=fontFrameLabelBold,
+            command=startRemovalProcess,
+        )
+        removeButton.place(x=11, y=130)
+        pass
+    
+    
+
     def scanNowHandler():
         if len(inputFiles) == 0:
             return
@@ -1215,6 +1356,8 @@ if __name__ == "__main__":
         # Calculate elapsed Time
         global elapseStart
         elapseStart = time()
+
+        global alertingPaths
 
         setProgress(0.2, "Starting Scan..", "Processing..")
         if scanRadio_var.get() == 1:
@@ -1234,9 +1377,21 @@ if __name__ == "__main__":
             # }
             singleResponse = requests.post(domainName + "scan", json=hashObj)
             scanResults[inputPath] = singleResponse.json()
+
+
+            if not scanResults[inputPath]["isSafe"]:
+                alertingPaths.append(inputPath)
+
             setProgress(0.8, "Rendering Results..")
+            
+            # Quarantine Dialog...
+            if len(alertingPaths) != 0:
+                renderQuarantineDialog()
+            
             renderActiveDisplay("results", scanResults[inputPath])
             setProgress(1, "Done.", "Complete")
+                
+            # renderActiveDisplay("results", scanResults[inputPath])
         else:
             # Multi File Scan
             if len(inputFiles) == 1:
@@ -1259,11 +1414,20 @@ if __name__ == "__main__":
                 singleResponse = requests.post(domainName + "scan", json=hashObj)
                 # Don't Update Continually, just store the results...
                 scanResults[inputPath] = singleResponse.json()
-                if scanResults[inputPath]["isSafe"] == False:
+
+
+                if not scanResults[inputPath]["isSafe"] == True:
                     alertingResults = True
                     alertCount += 1
+                    alertingPaths.append(inputPath)
+
 
             setProgress(0.8, "Rendering Results..")
+
+            # Quarantine Dialog...
+            if len(alertingPaths) != 0:
+                renderQuarantineDialog()
+                
             renderActiveDisplay("results", scanResults[inputComboSelected.get()])
             setProgress(1, "Done.", "Complete.")
 
@@ -1273,6 +1437,7 @@ if __name__ == "__main__":
                 )
             else:
                 resultNextButton.configure(state="normal")
+
 
         delay(3)
         statusProgressBar.set(0)
@@ -1535,6 +1700,10 @@ if __name__ == "__main__":
 
     renderActiveDisplay("scan")
 
+    # remove later
+    # renderQuarantineDialog()
+
+    
     app.mainloop()
 
 
