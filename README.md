@@ -1,8 +1,8 @@
-# Signature Based Ransomware Detection With Automated Backup System.
+## Signature Based Ransomware Detection With Automated Backup System.
 A desktop application for Ransomware Detection & Automated Backup using Signatures.
 
 
-## Setup Instructions (for frontend):
+### Setup Instructions (for frontend):
 1. Make sure you have **Python** installed on your system **(Python 3.11.6 recommended)**.
     ```console
         python --version
