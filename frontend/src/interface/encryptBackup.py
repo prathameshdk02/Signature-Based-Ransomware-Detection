@@ -34,7 +34,6 @@ def createEncryptedBackup(source_dir, dest_dir, zip_filename, mpQueue):
                     zipf.write(file_path, arcname=arcname)
 
         # Need to Change file extension if possible... (Not implemented.)
-
         print(f"Backup successfully created at: {zip_filepath}")
         result = mpQueue.get()
         result["success"] = True
